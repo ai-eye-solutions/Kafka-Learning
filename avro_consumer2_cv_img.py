@@ -23,12 +23,11 @@ import base64
 import cv2
 import numpy as np
 import os
-from uuid import uuid4
+
 from confluent_kafka import Consumer
-from confluent_kafka import Producer
-from confluent_kafka.serialization import SerializationContext, MessageField, StringSerializer
+from confluent_kafka.serialization import SerializationContext, MessageField
 from confluent_kafka.schema_registry import SchemaRegistryClient
-from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerializer
+from confluent_kafka.schema_registry.avro import AvroDeserializer
 
 class Image(object):
     """
@@ -54,7 +53,7 @@ class Image(object):
         self.img_base64 = img_base64
 
 
-def image_to_dict_for_consumer(image, ctx):
+def image_to_dict(image, ctx):
     """
     Returns a dict representation of a User instance for serialization.
 
@@ -77,55 +76,28 @@ def image_to_dict_for_consumer(image, ctx):
                 img_wd=image['img_wd'],
                 channel=image['channel'])
 
-def image_to_dict_for_producer(image, ctx):
+
+def dict_to_user(obj, ctx):
     """
-    Returns a dict representation of a User instance for serialization.
+    Converts object literal(dict) to a User instance.
 
     Args:
-        user (User): User instance.
+        obj (dict): Object literal(dict)
 
         ctx (SerializationContext): Metadata pertaining to the serialization
             operation.
-
-    Returns:
-        dict: Dict populated with user attributes to be serialized.
     """
 
-    # User._address must not be serialized; omit from dict
-    return dict(frame_name=image.frame_name,
-                img_base64=image.img_base64,
-                img_ht=image.img_ht,
-                img_wd=image.img_wd,
-                channel=image.channel)
+    if obj is None:
+        return None
 
+    return User(name=obj['name'],
+                favorite_number=obj['favorite_number'],
+                favorite_color=obj['favorite_color'])
 
-def delivery_report(err, msg):
-    """
-    Reports the failure or success of a message delivery.
-
-    Args:
-        err (KafkaError): The error that occurred on None on success.
-
-        msg (Message): The message that was produced or failed.
-
-    Note:
-        In the delivery report callback the Message.key() and Message.value()
-        will be the binary format as encoded by any configured Serializers and
-        not the same object that was passed to produce().
-        If you wish to pass the original object(s) for key and value to delivery
-        report callback we recommend a bound callback or lambda where you pass
-        the objects along.
-    """
-
-    if err is not None:
-        print("Delivery failed for User record {}: {}".format(msg.key(), err))
-        return
-    print('User record {} successfully produced to {} [{}] at offset {}'.format(
-        msg.key(), msg.topic(), msg.partition(), msg.offset()))
 
 def main(args):
-    topic_1 = args.topic_consumer1
-    topic_2 = args.topic_consumer2
+    topic = args.topic
     schema = args.schema
 
     #path = os.path.realpath(os.path.dirname(__file__))
@@ -135,10 +107,9 @@ def main(args):
     schema_registry_conf = {'url': args.schema_registry}
     schema_registry_client = SchemaRegistryClient(schema_registry_conf)
 
-    #TODO Deserialization for consumer1 
     avro_deserializer = AvroDeserializer(schema_registry_client,
                                      schema_str,
-                                     image_to_dict_for_consumer)
+                                     image_to_dict)
 
 
     consumer_conf = {'bootstrap.servers': args.bootstrap_servers,
@@ -146,18 +117,7 @@ def main(args):
                      'auto.offset.reset': "earliest"}
 
     consumer = Consumer(consumer_conf)
-    consumer.subscribe([topic_1])
-
-    #TODO Serialization for consumer2
-    avro_serializer = AvroSerializer(schema_registry_client,
-                                     schema_str,
-                                     image_to_dict_for_producer)
-
-    string_serializer = StringSerializer('utf_8')
-
-    producer_conf = {'bootstrap.servers': args.bootstrap_servers}
-
-    producer = Producer(producer_conf)
+    consumer.subscribe([topic])
 
     while True:
         try:
@@ -180,32 +140,7 @@ def main(args):
                 image_np = np.frombuffer(image_bytes, dtype=np.uint8)
                 # Decode the numpy array to a CV2 image
                 cv_image = cv2.imdecode(image_np, flags=cv2.IMREAD_COLOR)
-                # font
-                font = cv2.FONT_HERSHEY_SIMPLEX
-                # org
-                org = (1080, 50)
-                # fontScale
-                fontScale = 1
-                # Blue color in BGR
-                color = (255, 0, 0)
-                # Line thickness of 2 px
-                thickness = 2
-                # Using cv2.putText() method
-                img_matlab = cv2.putText(cv_image, 'from Receiver', org, font,
-                               fontScale, color, thickness, cv2.LINE_AA)
-                cv2.imwrite(f"./from_receiver/{image.frame_name}", cv_image)
-                #TODO Send data to consumer2
-                image_obj = Image(frame_name=image.frame_name,\
-                         channel=image.channel,\
-                         img_ht=image.img_ht,\
-                         img_wd=image.img_wd,\
-                         img_base64=image.img_base64\
-                         )
-                producer.produce(topic=topic_2,
-                             key=string_serializer(str(uuid4())),
-                             value=avro_serializer(image_obj, SerializationContext(topic_2, MessageField.VALUE)),
-                             on_delivery=delivery_report)
-
+                cv2.imwrite(f"./from_receiver_2/{image.frame_name}", cv_image)
         except KeyboardInterrupt:
             break
 
@@ -220,10 +155,8 @@ if __name__ == '__main__':
                         help="Schema Registry (http(s)://host[:port]")
     parser.add_argument('-j', dest="schema", required=True,
                         help="Schema Json")
-    parser.add_argument('-t1', dest="topic_consumer1", default="example_serde_avro",
-                        help="Topic name for consumer1")
-    parser.add_argument('-t2', dest="topic_consumer2", default="example_serde_avro",
-                        help="Topic name for consumer2")
+    parser.add_argument('-t', dest="topic", default="example_serde_avro",
+                        help="Topic name")
     parser.add_argument('-g', dest="group", default="example_serde_avro",
                         help="Consumer group")
     parser.add_argument('-p', dest="specific", default="true",
