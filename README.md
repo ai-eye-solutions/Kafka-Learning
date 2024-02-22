@@ -2,7 +2,7 @@
 This branch demonstrates the Key Concepts of a Schema Registry in kafka's producer and consumer, you can refer this [article](https://developer.confluent.io/courses/schema-registry/key-concepts/#:~:text=The%20schema%20registry%20is%20a,to%20and%20received%20from%20Kafka.)
 
 ## Below image explains how schema registry works
-![image](https://github.com/safeproai/Kafka-Data-Trasmission/assets/141702049/d5b20215-345e-44a8-b142-42ce1c93277e)
+![image](https://images.ctfassets.net/gt6dp23g0g38/2GqYBCFYbW9bqmehWdbRTI/33766f242154b52968267265ac005af0/sr101-m1-09.png)
 
 ## There are three following way we are using producer and consumer using different schema:
 1. Normal data like (name, address, favorite number and color)
