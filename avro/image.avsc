@@ -1,0 +1,26 @@
+{
+    "type": "record",
+    "name": "ith_camera_live_frame",
+    "fields": [
+        {
+            "name": "img_base64",
+            "type": "string"
+        },
+        {
+            "name": "img_ht",
+            "type": "int"
+        },
+        {
+            "name": "img_wd",
+            "type": "int"
+        },
+        {
+            "name": "channel",
+            "type": "int"
+        },
+        {
+            "name": "frame_name",
+            "type": "string"
+        }
+    ]
+}
