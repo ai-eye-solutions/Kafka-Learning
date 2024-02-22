@@ -36,8 +36,8 @@ if __name__ == '__main__':
             print('Message delivered to {} [{}]'.format(msg.topic(), msg.partition()))
 
     # Produce data by selecting random values from these lists.
-    topic = "purchases"
-    img_path="/home/nitin/Safepro/Workspace/ITMS_Phase2/kafka-python-getting-started/org_data/"
+    topic = "purchases_"
+    img_path="./org_data/"
     img_list=[file for file in os.listdir(img_path)]
 
     #TODO Read Json
